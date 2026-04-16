@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.7'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.github.jk1.dependency-license-report' version '2.9'
 }
 
 group = 'com.denik'
@@ -38,4 +39,31 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+// Task: copy the report output into the resources that will be packaged
+tasks.register('copyLicenseReport', Copy) {
+    // Ensure the report is generated before copying
+    dependsOn tasks.named('generateLicenseReport')
+
+    def reportDir = layout.buildDirectory.dir('reports/dependency-license')
+    from(reportDir)
+    include '**/*'
+    into(layout.buildDirectory.dir('resources/main/static/dependency-license'))
+    // Avoid duplicate file problems if run multiple times
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Ensure the copy runs before processResources so it ends up in the classpath for the jar
+tasks.named('processResources') {
+    dependsOn tasks.named('copyLicenseReport')
+}
+
+// Also make sure bootJar will include the produced report (extra safety if processResources isn't used)
+tasks.named('bootJar') {
+    dependsOn tasks.named('copyLicenseReport')
+    from(layout.buildDirectory.dir('reports/dependency-license')) {
+        into('BOOT-INF/classes/static/dependency-license')
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
 }
