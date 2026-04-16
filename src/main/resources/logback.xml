@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <!-- directory for file logs -->
+  <property name="LOG_DIR" value="logs"/>
+
+  <!-- Console appender -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <!-- include MDC so trace ids (traceId, trace_id, X-B3-TraceId) are present in JSON -->
+      <includeMdc>true</includeMdc>
+      <!-- optional: add a static app name field -->
+      <customFields>{"app":"foss-deps-disclosure"}</customFields>
+    </encoder>
+
+  </appender>
+
+  <!-- Rolling file appender: daily files + size-based rollover -->
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_DIR}/application.log</file>
+
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- daily files, with index and gz compression -->
+      <fileNamePattern>${LOG_DIR}/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+
+      <!-- roll when size exceeds 10MB within a day -->
+      <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+        <maxFileSize>10MB</maxFileSize>
+      </timeBasedFileNamingAndTriggeringPolicy>
+
+      <!-- keep 30 days of history and cap total size -->
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>2GB</totalSizeCap>
+    </rollingPolicy>
+
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <!-- include MDC so trace ids (traceId, trace_id, X-B3-TraceId) are present in JSON -->
+      <includeMdc>true</includeMdc>
+      <customFields>{"app":"web-application"}</customFields>
+    </encoder>
+  </appender>
+
+  <!-- reduce noise from common frameworks -->
+  <logger name="org.springframework" level="WARN"/>
+  <logger name="org.hibernate" level="WARN"/>
+
+  <!-- default root logger -->
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+<!--    <appender-ref ref="FILE"/>-->
+  </root>
+
+
+  <springProfile name="local | json-log-off">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <root level="${logging.level.root}">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+</configuration>
